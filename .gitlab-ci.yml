@@ -1,0 +1,53 @@
+stages:
+  - test
+  - build
+
+variables:
+  APP_NAME: graphviz-web
+
+test:
+  stage: test
+  image: alpine
+
+  script:
+    - ./runtests.sh
+
+build_dev:
+  image: docker:stable
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    CONTAINER_IMAGE_TAG: palnabarun/$APP_NAME:latest
+  script:
+    - echo "Logging into docker..."
+    - docker login -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD
+    - echo "Building docker image..."
+    - docker build -t $CONTAINER_IMAGE_TAG .
+    - echo "Build Complete..."
+    - echo "Pushing to registry..."
+    - docker push $CONTAINER_IMAGE_TAG
+  only:
+    - master
+
+build_release:
+  image: docker:stable
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    CONTAINER_IMAGE_TAG: palnabarun/$APP_NAME:$CI_COMMIT_TAG
+  script:
+    - echo "Logging into docker..."
+    - docker login -u $REGISTRY_USER -p $REGISTRY_PASSWORD
+    - echo "Building docker image..."
+    - docker build -t $CONTAINER_IMAGE_TAG .
+    - echo "Build Complete..."
+    - echo "Pushing to registry..."
+    - docker push $CONTAINER_IMAGE_TAG
+  only:
+  - tags
